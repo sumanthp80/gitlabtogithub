@@ -19,7 +19,7 @@ jobs:
       version_number: ${{ steps.set_version.outputs.version_number }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Confirm MSBuild path exists
         shell: pwsh
         run: |
@@ -70,7 +70,7 @@ jobs:
       github.ref_name != 'master' &&
       github.ref_name != 'dev'
     steps:  
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Write VERSION file from setup output
         shell: pwsh
@@ -124,7 +124,7 @@ jobs:
           Remove-Item -Path ".\PowerShell Deploy\Dependencies\*.nupkg"
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v2.3.1
+        uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
           name: ${{ env.ArtifactName }}.${{ env.VersionNumber }}
