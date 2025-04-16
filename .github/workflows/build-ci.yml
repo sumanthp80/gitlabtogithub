@@ -7,7 +7,7 @@ on:
 
 env:
   Solution: 'Assure-IT.sln'
-  Msbuild: 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe'
+  Msbuild: 'C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe'
   ArtifactName: 'AssureIT'
   MajorVersionNumber: '1'
   MinorVersionNumber: '0'
@@ -20,7 +20,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
+      - name: Confirm MSBuild path exists
+        shell: pwsh
+        run: |
+          if (!(Test-Path "$env:Msbuild")) {
+            Write-Error "MSBuild not found at path: $env:Msbuild"
+            exit 1
+          } else {
+            Write-Host "MSBuild found at $env:Msbuild"
+          }
       - name: Set version number
         id: set_version
         shell: pwsh
