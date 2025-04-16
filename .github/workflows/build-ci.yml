@@ -124,12 +124,11 @@ jobs:
           Remove-Item -Path ".\PowerShell Deploy\Dependencies\*.nupkg"
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         continue-on-error: true
         with:
           name: ${{ env.ArtifactName }}.${{ env.VersionNumber }}
           path: |
-            PowerShell Deploy/**/*.*
             VERSION
 
   test:
