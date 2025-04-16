@@ -124,7 +124,7 @@ jobs:
           Remove-Item -Path ".\PowerShell Deploy\Dependencies\*.nupkg"
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v3.1.3
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ env.ArtifactName }}.${{ env.VersionNumber }}
           path: |
