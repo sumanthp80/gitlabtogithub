@@ -17,6 +17,7 @@ jobs:
     runs-on: windows-latest
     outputs:
       version_number: ${{ steps.set_version.outputs.version_number }}
+      artifact_name: ${{ env.ArtifactName }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -69,42 +70,23 @@ jobs:
     uses: ./.github/workflows/reusable-build.yml
     with:
       version_number: ${{ needs.setup.outputs.version_number }}
-      artifact_name: ${{ env.ArtifactName }}
-      retnetion_days: 1
+      artifact_name: ${{ needs.setup.outputs.artifact_name }}
+      retention_days: 1
   build_dev:
     needs: setup
     if: |
-      github.ref_name = 'dev'
+      github.ref_name == 'dev'
     uses: ./.github/workflows/reusable-build.yml
     with:
       version_number: ${{ needs.setup.outputs.version_number }}
-      artifact_name: ${{ env.ArtifactName }}
-      retnetion_days: 1
+      artifact_name: ${{ needs.setup.outputs.artifact_name }}
+      retention_days: 1
   build_master:
     needs: setup
     if: |
-      github.ref_name = 'master'
+      github.ref_name == 'master'
     uses: ./.github/workflows/reusable-build.yml
     with:
       version_number: ${{ needs.setup.outputs.version_number }}
-      artifact_name: ${{ env.ArtifactName }}
-      retnetion_days: 1
-
-  test:
-    needs: [build]
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run Pester Tests
-        shell: pwsh
-        run: |
-          try {
-            $result = Invoke-Pester -ExcludeTag "RequiresSql" -OutputFile "pester_xml.xml" -OutputFormat NUnitXml -PassThru -Strict -ErrorAction Stop
-            if ($result.FailedCount -gt 0) {
-              throw "$($result.FailedCount) tests did not pass"
-            }
-          } catch {
-            Write-Error $_
-            exit 1
-          }
+      artifact_name: ${{ needs.setup.outputs.artifact_name }}
+      retention_days: 1

@@ -1,5 +1,5 @@
 # .github/workflows/reusable-build.yml
-name: Reusable Build
+name: Reusable Build & Test
 on:
   workflow_call:
     inputs:
@@ -12,23 +12,18 @@ on:
       retention_days:
         required: true
         type: string
+      # msbuild_path:
+      #   required: true
+      #   type: string
 jobs:
-  # build:
-  #   runs-on: windows-latest
-  #   ...
-  #   env:
-  #     VersionNumber: ${{ inputs.version_number }}
-
   build:
-    # needs: setup
     runs-on: windows-latest
     env:
       VersionNumber: ${{ inputs.version_number }}
       ArtifactName: ${{ inputs.artifact_name }}
       RetentionDays: ${{ inputs.retention_days }}
-    # if: |
-    #   github.ref_name != 'master' &&
-    #   github.ref_name != 'dev'
+      # Msbuild: ${{ inputs.msbuild_path }}
+      Msbuild: 'C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe'
     steps:  
       - uses: actions/checkout@v4
 
@@ -93,3 +88,23 @@ jobs:
             Assure-IT/DacPac/*
             PowerShell Deploy/**/*.*
             VERSION
+  
+  test:
+    needs: [build]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Pester Tests
+        shell: pwsh
+        run: |
+          try {
+            $result = Invoke-Pester -ExcludeTag "RequiresSql" -OutputFile "pester_xml.xml" -OutputFormat NUnitXml -PassThru -Strict -ErrorAction Stop
+            if ($result.FailedCount -gt 0) {
+              throw "$($result.FailedCount) tests did not pass"
+            }
+          } catch {
+            Write-Error $_
+            exit 1
+          }
+
