@@ -17,6 +17,7 @@ jobs:
     runs-on: windows-latest
     outputs:
       version_number: ${{ steps.set_version.outputs.version_number }}
+      retention_days: ${{ steps.set_version.outputs.retention_days }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,25 +41,32 @@ jobs:
           Switch -Wildcard ($branchName) {
             "master" {
               $VersionNumber = "${env:MajorVersionNumber}.${env:MinorVersionNumber}.$shortSha-master"
+              $RetentionDays = 7
             }
             "dev" {
               $VersionNumber = "${env:MajorVersionNumber}.${env:MinorVersionNumber}.$shortSha-dev"
+              $RetentionDays = 1
             }
             "feature/*" {
               $suffix = $branchName.Substring($branchName.IndexOf("/") + 1)
               $VersionNumber = "${env:MajorVersionNumber}.${env:MinorVersionNumber}.$shortSha-$suffix"
+              $RetentionDays = 1
             }
             "version/*" {
               $suffix = $branchName.Substring($branchName.IndexOf("/")).Trim("/v").Trim("/")
               $VersionNumber = "$suffix.$shortSha"
+              $RetentionDays = 1
             }
             Default {
               $VersionNumber = "${env:MajorVersionNumber}.${env:MinorVersionNumber}.$shortSha-" + $branchName.Replace("/", "-")
+              $RetentionDays = 7
             }
           }
 
           Write-Host "Version number for the build: $VersionNumber"
+          Write-Host "Retention Days for the Artifact: $RetentionDays"
           echo "version_number=$VersionNumber" >> $env:GITHUB_OUTPUT
+          echo "retention_days=$RetentionDays" >> $env:GITHUB_OUTPUT
           Set-Content -Path .\VERSION -Value $VersionNumber
 
   build:
@@ -128,7 +136,7 @@ jobs:
         # continue-on-error: true
         with:
           name: ${{ env.ArtifactName }}.${{ env.VersionNumber }}
-          retention-days: 1
+          retention-days: ${{ env.RetentionDays }}
           path: |
             Assure-IT/DacPac/*
             PowerShell Deploy/**/*.*
