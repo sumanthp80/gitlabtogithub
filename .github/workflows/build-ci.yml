@@ -41,11 +41,11 @@ jobs:
           Switch -Wildcard ($branchName) {
             "master" {
               $VersionNumber = "${env:MajorVersionNumber}.${env:MinorVersionNumber}.$shortSha-master"
-              $RetentionDays = 7
+              $RetentionDays = 365
             }
             "dev" {
               $VersionNumber = "${env:MajorVersionNumber}.${env:MinorVersionNumber}.$shortSha-dev"
-              $RetentionDays = 1
+              $RetentionDays = 7
             }
             "feature/*" {
               $suffix = $branchName.Substring($branchName.IndexOf("/") + 1)
@@ -59,7 +59,7 @@ jobs:
             }
             Default {
               $VersionNumber = "${env:MajorVersionNumber}.${env:MinorVersionNumber}.$shortSha-" + $branchName.Replace("/", "-")
-              $RetentionDays = 7
+              $RetentionDays = 1
             }
           }
 
