@@ -9,15 +9,14 @@ env:
   Solution: 'Assure-IT.sln'
   Msbuild: 'C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe'
   ArtifactName: 'AssureIT'
-  MajorVersionNumber: '1'
-  MinorVersionNumber: '1'
+  MajorVersionNumber: '3'
+  MinorVersionNumber: '0'
 
 jobs:
   setup:
     runs-on: windows-latest
     outputs:
       version_number: ${{ steps.set_version.outputs.version_number }}
-      artifact_name: ${{ env.ArtifactName }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -62,31 +61,94 @@ jobs:
           echo "version_number=$VersionNumber" >> $env:GITHUB_OUTPUT
           Set-Content -Path .\VERSION -Value $VersionNumber
 
-  build_other:
+  build:
     needs: setup
-    if: |
-      github.ref_name != 'master' &&
-      github.ref_name != 'dev'
-    uses: ./.github/workflows/reusable-build.yml
-    with:
-      version_number: ${{ needs.setup.outputs.version_number }}
-      artifact_name: ${{ needs.setup.outputs.artifact_name }}
-      retention_days: 1
-  build_dev:
-    needs: setup
-    if: |
-      github.ref_name == 'dev'
-    uses: ./.github/workflows/reusable-build.yml
-    with:
-      version_number: ${{ needs.setup.outputs.version_number }}
-      artifact_name: ${{ needs.setup.outputs.artifact_name }}
-      retention_days: 1
-  build_master:
-    needs: setup
-    if: |
-      github.ref_name == 'master'
-    uses: ./.github/workflows/reusable-build.yml
-    with:
-      version_number: ${{ needs.setup.outputs.version_number }}
-      artifact_name: ${{ needs.setup.outputs.artifact_name }}
-      retention_days: 1
+    runs-on: windows-latest
+    env:
+      VersionNumber: ${{ needs.setup.outputs.version_number }}
+    # if: |
+    #   github.ref_name != 'master' &&
+    #   github.ref_name != 'dev'
+    steps:  
+      - uses: actions/checkout@v4
+
+      - name: Write VERSION file from setup output
+        shell: pwsh
+        run: |
+          Set-Content -Path .\VERSION -Value "${{ env.VersionNumber }}"
+
+      - name: Build Solution
+        shell: pwsh
+        run: |
+          & "$env:Msbuild" "$env:Solution" /p:Configuration=Release
+
+      - name: Rename DACPAC
+        shell: pwsh
+        run: |
+          $VersionNumber = Get-Content .\VERSION
+          $FilePattern = ".\Assure-IT\bin\Release\*.dacpac"
+          $Files = Get-ChildItem -Path $FilePattern | Where-Object { $_.Name -notin ("master.dacpac", "msdb.dacpac") }
+          ForEach ($File In $Files) {
+            Move-Item -Path $File.FullName -Destination ($File.FullName.Replace(".dacpac", "-v$VersionNumber.dacpac"))
+          }
+
+      - name: Update Install Script
+        shell: pwsh
+        run: |
+          $VersionNumber = Get-Content .\VERSION
+          $PathToPowerShell = ".\PowerShell Deploy\Install Assure-IT.ps1"
+          $PowerShell = (Get-Content $PathToPowerShell) -replace '`\$dacpacPath = `"`"', "`$dacpacPath = `"..\Assure-IT\DacPac\Assure-IT-v$VersionNumber.dacpac`""
+          $PowerShell | Set-Content -Path $PathToPowerShell
+
+      - name: Bootstrap NuGet
+        shell: pwsh
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Get-PackageProvider -Name NuGet -ForceBootstrap
+
+      - name: Download NuGet Dependencies
+        shell: pwsh
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          cd ".\PowerShell Deploy\nuget"
+          & .\nuget.exe install Microsoft.SqlServer.DacFx.x64 -o packages
+          cd "${{ github.workspace }}"
+
+      - name: Package Artifacts
+        shell: pwsh
+        run: |
+          New-Item -Name ".\Assure-IT\DacPac" -ItemType Directory -Force
+          New-Item -Name ".\PowerShell Deploy\nuget\Dependencies" -ItemType Directory -Force
+          Move-Item -Path ".\Assure-IT\bin\Release\*" -Destination ".\Assure-IT\DacPac"
+          Move-Item -Path ".\PowerShell Deploy\nuget\packages\Microsoft*" -Destination ".\PowerShell Deploy\Dependencies"
+          Remove-Item -Path ".\PowerShell Deploy\Dependencies\*.nupkg"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        # continue-on-error: true
+        with:
+          name: ${{ env.ArtifactName }}.${{ env.VersionNumber }}
+          retention-days: 1
+          path: |
+            Assure-IT/DacPac/*
+            PowerShell Deploy/**/*.*
+            VERSION
+
+  test:
+    needs: [build]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Pester Tests
+        shell: pwsh
+        run: |
+          try {
+            $result = Invoke-Pester -ExcludeTag "RequiresSql" -OutputFile "pester_xml.xml" -OutputFormat NUnitXml -PassThru -Strict -ErrorAction Stop
+            if ($result.FailedCount -gt 0) {
+              throw "$($result.FailedCount) tests did not pass"
+            }
+          } catch {
+            Write-Error $_
+            exit 1
+          }
