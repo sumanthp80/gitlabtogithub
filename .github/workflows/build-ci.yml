@@ -7,14 +7,14 @@ on:
 
 env:
   Solution: 'Assure-IT.sln'
-  Msbuild: 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe'
+  Msbuild: 'C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\MSBuild.exe'
   ArtifactName: 'AssureIT'
-  MajorVersionNumber: '4'
+  MajorVersionNumber: '3'
   MinorVersionNumber: '0'
 
 jobs:
   setup:
-    runs-on: windows-2019
+    runs-on: windows-2022
     outputs:
       version_number: ${{ steps.set_version.outputs.version_number }}
       retention_days: ${{ steps.set_version.outputs.retention_days }}
@@ -71,7 +71,7 @@ jobs:
 
   build:
     needs: setup
-    runs-on: windows-2019
+    runs-on: windows-2022
     env:
       VersionNumber: ${{ needs.setup.outputs.version_number }}
     # if: |
@@ -144,7 +144,7 @@ jobs:
 
   test:
     needs: [build]
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
 
