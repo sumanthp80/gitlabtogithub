@@ -9,7 +9,7 @@ env:
   Solution: 'Assure-IT.sln'
   Msbuild: 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe'
   ArtifactName: 'AssureIT'
-  MajorVersionNumber: '3'
+  MajorVersionNumber: '4'
   MinorVersionNumber: '0'
 
 jobs:
